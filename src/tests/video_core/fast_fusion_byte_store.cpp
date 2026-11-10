@@ -9,8 +9,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#ifdef LICHII_OPENGL_BACKENDS
 #include "shader_recompiler/backend/glasm/emit_glasm.h"
 #include "shader_recompiler/backend/glsl/emit_glsl.h"
+#endif
 #include "shader_recompiler/backend/spirv/emit_spirv.h"
 #include "shader_recompiler/byte_addressed_image.h"
 #include "shader_recompiler/frontend/ampere/lower_to_maxwell.h"
@@ -310,7 +312,11 @@ TEST_CASE("Image backends preserve raw B32 storage and add one conditional image
           "[video_core][fast_fusion_byte_store]") {
     for (const bool image_coherent : {false, true}) {
         for (const bool global_coherent : {false, true}) {
+#ifdef LICHII_OPENGL_BACKENDS
             for (const unsigned backend : {0U, 1U, 2U}) {
+#else
+            for (const unsigned backend : {0U}) {
+#endif
                 ByteStoreProgram fixture;
                 IR::IREmitter ir{fixture.block};
                 IR::TextureInstInfo read_flags{};
@@ -344,7 +350,9 @@ TEST_CASE("Image backends preserve raw B32 storage and add one conditional image
                     CHECK(constants.at(barriers.front()[2]) ==
                           (0x108U | (image_coherent ? 0x800U : 0U) |
                            (global_coherent ? 0x40U : 0U)));
-                } else if (backend == 1) {
+                }
+#ifdef LICHII_OPENGL_BACKENDS
+                if (backend == 1) {
                     const auto glsl{Backend::GLSL::EmitGLSL(fixture.profile, fixture.program)};
                     CHECK((glsl.find("coherent ") != std::string::npos) == image_coherent);
                     CHECK(glsl.find("r32ui") != std::string::npos);
@@ -354,7 +362,8 @@ TEST_CASE("Image backends preserve raw B32 storage and add one conditional image
                     if (fence != std::string::npos) {
                         CHECK(glsl.find("groupMemoryBarrier();", fence + 1) == std::string::npos);
                     }
-                } else {
+                }
+                if (backend == 2) {
                     const auto glasm{Backend::GLASM::EmitGLASM(fixture.profile, {}, fixture.program)};
                     CHECK(glasm.find(image_coherent ? "STOREIM.COH.U32" : "STOREIM.U32") !=
                           std::string::npos);
@@ -368,6 +377,7 @@ TEST_CASE("Image backends preserve raw B32 storage and add one conditional image
                         CHECK(glasm.find("MEMBAR.CTA;", membar + 1) == std::string::npos);
                     }
                 }
+#endif
             }
         }
     }

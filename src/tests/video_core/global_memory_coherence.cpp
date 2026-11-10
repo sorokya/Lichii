@@ -10,8 +10,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#ifdef LICHII_OPENGL_BACKENDS
 #include "shader_recompiler/backend/glasm/emit_glasm.h"
 #include "shader_recompiler/backend/glsl/emit_glsl.h"
+#endif
 #include "shader_recompiler/backend/spirv/emit_spirv.h"
 #include "shader_recompiler/frontend/ir/ir_emitter.h"
 #include "shader_recompiler/frontend/maxwell/translate/impl/impl.h"
@@ -239,6 +241,7 @@ TEST_CASE("Coherent storage aliases and barrier semantics are emitted in SPIR-V"
     }
 }
 
+#ifdef LICHII_OPENGL_BACKENDS
 TEST_CASE("GLSL and GLASM emit coherent storage and barrier operations",
           "[video_core][coherence]") {
     for (const bool coherent : {false, true}) {
@@ -291,6 +294,7 @@ TEST_CASE("GLSL and GLASM emit coherent storage and barrier operations",
         }
     }
 }
+#endif
 
 TEST_CASE("Joining vertex storage preserves coherent memory requirement", "[video_core][coherence]") {
     for (const bool a : {false, true}) {
@@ -306,7 +310,11 @@ TEST_CASE("Joining vertex storage preserves coherent memory requirement", "[vide
 
 TEST_CASE("Global fallback backends address sparse guest slots through compact bindings",
           "[shader][storage_buffer][nvn]") {
+#ifdef LICHII_OPENGL_BACKENDS
     for (const u32 backend : {0U, 1U, 2U}) {
+#else
+    for (const u32 backend : {0U}) {
+#endif
         CAPTURE(backend);
         Program fixture;
         auto& info = fixture.program.info;
@@ -364,13 +372,16 @@ TEST_CASE("Global fallback backends address sparse guest slots through compact b
                 expected_bindings.insert(first_storage_binding + binding);
             }
             CHECK(accessed_bindings == expected_bindings);
-        } else if (backend == 1) {
+        }
+#ifdef LICHII_OPENGL_BACKENDS
+        if (backend == 1) {
             const auto code = Backend::GLSL::EmitGLSL(fixture.profile, fixture.program);
             CHECK(code.find("uint64_t ssbo_addr1=") != std::string::npos);
             CHECK(code.find("uint64_t ssbo_addr2=") != std::string::npos);
             CHECK(code.find("uint64_t ssbo_addr0=") == std::string::npos);
             CHECK(code.find("uint64_t ssbo_addr3=") == std::string::npos);
-        } else {
+        }
+        if (backend == 2) {
             RuntimeInfo runtime{};
             runtime.glasm_use_storage_buffers = true;
             const auto code = Backend::GLASM::EmitGLASM(fixture.profile, runtime, fixture.program);
@@ -381,6 +392,7 @@ TEST_CASE("Global fallback backends address sparse guest slots through compact b
             CHECK(code.find("ssbo1[RC.x]") != std::string::npos);
             CHECK(code.find("ssbo2[RC.x]") != std::string::npos);
         }
+#endif
     }
 }
 

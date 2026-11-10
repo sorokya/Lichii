@@ -222,6 +222,12 @@ endif()
 target_compile_definitions(tests PRIVATE
     LICHII_NX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/core/nx_fixtures")
 
+# shader_recompiler only builds the GLSL and GLASM backends when OpenGL is enabled, so the tests
+# that emit through them cannot link elsewhere (macOS, Android, Windows on ARM).
+if (ENABLE_OPENGL)
+    target_compile_definitions(tests PRIVATE LICHII_OPENGL_BACKENDS)
+endif()
+
 add_test(NAME tests COMMAND tests)
 
 if (TARGET SDL3::SDL3)

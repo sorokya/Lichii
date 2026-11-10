@@ -13,8 +13,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#ifdef LICHII_OPENGL_BACKENDS
 #include "shader_recompiler/backend/glasm/emit_glasm.h"
 #include "shader_recompiler/backend/glsl/emit_glsl.h"
+#endif
 #include "shader_recompiler/backend/spirv/emit_spirv.h"
 #include "shader_recompiler/frontend/ir/program.h"
 #include "shader_recompiler/frontend/maxwell/translate/impl/impl.h"
@@ -435,7 +437,11 @@ TEST_CASE("Maxwell F2I byte destinations saturate and extend", "[shader][maxwell
 
 TEST_CASE("Maxwell byte conversions emit with native and lowered float64",
           "[shader][maxwell][numeric_backend]") {
+#ifdef LICHII_OPENGL_BACKENDS
     for (u32 backend = 0; backend < 3; ++backend) {
+#else
+    for (u32 backend = 0; backend < 1; ++backend) {
+#endif
         for (bool float64 : {false, true}) {
             for (u32 format : {1U, 2U, 3U}) {
                 for (bool sign : {false, true}) {
@@ -479,13 +485,17 @@ TEST_CASE("Maxwell byte conversions emit with native and lowered float64",
                     profile.support_int64 = true;
                     if (backend == 0) {
                         REQUIRE_FALSE(Shader::Backend::SPIRV::EmitSPIRV(profile, program).empty());
-                    } else if (backend == 1) {
+                    }
+#ifdef LICHII_OPENGL_BACKENDS
+                    if (backend == 1) {
                         REQUIRE_FALSE(Shader::Backend::GLSL::EmitGLSL(profile, program).empty());
-                    } else {
+                    }
+                    if (backend == 2) {
                         Shader::RuntimeInfo runtime{};
                         runtime.glasm_use_storage_buffers = true;
                         REQUIRE_FALSE(Shader::Backend::GLASM::EmitGLASM(profile, runtime, program).empty());
                     }
+#endif
                 }
             }
         }
