@@ -153,8 +153,11 @@ else()
         add_compile_options(
             $<$<COMPILE_LANGUAGE:C,CXX>:-fwrapv>
             $<$<COMPILE_LANGUAGE:C,CXX>:-pipe>
-            # Disable RTTI (C++ only)
-            $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+            # Disable RTTI (C++ only), except on Apple: with -fno-rtti, clang emits a private
+            # type_info for a catch's type without its bases, so a catch of a standard base class
+            # (std::exception, std::logic_error, std::ios_base::failure) misses the derived
+            # exceptions libc++ throws.
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<PLATFORM_ID:Darwin>>>:-fno-rtti>)
     endif()
 
     if (ENABLE_WERROR)

@@ -94,7 +94,10 @@ else()
         -Wcast-qual
         -pedantic
         -Wno-missing-braces
-        -fno-rtti
+        # Apple only: -fno-rtti makes clang emit a weak private type_info for the standard library
+        # types dynarmic catches, and the linker keeps it instead of libc++'s. Every catch of
+        # std::exception in the same binary then stops matching.
+        $<$<NOT:$<PLATFORM_ID:Darwin>>:-fno-rtti>
         #-fno-exceptions
     )
     if (CXX_GCC)
